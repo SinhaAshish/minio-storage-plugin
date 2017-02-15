@@ -23,6 +23,7 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import javax.annotation.Nonnull;
 
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,7 +34,6 @@ import java.util.Map;
 
 import io.minio.*;
 import io.minio.errors.ErrorResponseException;
-import io.minio.errors.InputSizeMismatchException;
 import io.minio.errors.InsufficientDataException;
 import io.minio.errors.InternalException;
 import io.minio.errors.InvalidArgumentException;
@@ -169,25 +169,26 @@ public final class MinioUploader extends Recorder implements SimpleBuildStep {
           String fileName = getFilename(path, workspacePath);
           long size = path.length();
           String objectName;
-
-          InputStream stream = new FileInputStream(path.getRemote());
-          String contentType = "application/octet-stream";
-
-          if (objectNamePrefix != null) {
-            objectName = objectNamePrefix + "_" + fileName;
-          } else {
-            objectName = fileName;
-          }
-
-          minioClient.putObject(bucketName, objectName, stream, size, contentType);
+          
+          if (objectNamePrefix != null || !(("").equals(objectNamePrefix))) {
+		        objectName = objectNamePrefix + "_" + fileName;
+		      } else {
+		        objectName = fileName;
+		      }
+          
+          
+          /* Code added for uploading from slave starts*/
+          path.act(new MinioAllPathUploader(minioClient,bucketName,path,objectName,listener ));
+          /* Code added for uploading from slave ends */
           log(console, "File " + fileName + ", is uploaded to bucket " + bucketName);
+
+        
 
         }
       }
 
     } catch (InvalidKeyException | InvalidBucketNameException | NoSuchAlgorithmException | InsufficientDataException
-        | NoResponseException | ErrorResponseException | InternalException | InvalidArgumentException
-        | InputSizeMismatchException | XmlPullParserException e) {
+        | NoResponseException | ErrorResponseException | InternalException  | XmlPullParserException e) {
       e.printStackTrace(listener.error("Minio error, failed to upload files"));
       run.setResult(Result.UNSTABLE);
     } catch (IOException e) {
